@@ -1,0 +1,5 @@
+api_key        Tlg7BcWF6mwNQrtdCQwuLhoTC
+api_secret     OOB7kZnYaH4VrtFhp8IcxPBa19eEjdbD85ffhboikCCbZkEYLV
+token          1577726534407704576-mVVwWgJZMFBPq6tCFndRrqg3pvPNLO
+token_secret   dhBNCyjVOpDmwAhtmSGTGwuaXuuOwbjP3Jekg6rdn0oe6
+bearer_token   AAAAAAAAAAAAAAAAAAAAAEOHhwEAAAAACUEmyClZAFgh%2FHp4PWCIBMOawdU%3DhYsELrXqWIMD6JFG4CQwqAY5PuwgKFp77PLDZpgklJe5G7gAaq
