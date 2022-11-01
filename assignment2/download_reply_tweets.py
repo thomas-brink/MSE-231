@@ -79,6 +79,7 @@ def retrieve_reply_tweets(line: str):
                                             'created_at', 'public_metrics', 'in_reply_to_user_id'],
                               user_fields=['public_metrics', 'verified'],
                               max_results=100).flatten(limit=100)
+
         for tweet in paginator:
             print(tweet.data)
         
@@ -129,7 +130,7 @@ if __name__ == "__main__":
     starttime = datetime.datetime.now()
     twitter_streaming_client = CustomStreamingClient(
         write=output, bearer_token=creds["bearer_token"])
-    twitter_client = Client(bearer_token=creds["bearer_token"])
+    twitter_client = Client(bearer_token=creds["bearer_token"], wait_on_rate_limit=True)
 
     # Clear out old rules
     old_rules = twitter_streaming_client.get_rules()
@@ -139,8 +140,11 @@ if __name__ == "__main__":
 
     # Start streaming
     eprint("Started running at", starttime)
+    i = 1
     for line in sys.stdin:
         retrieve_reply_tweets(line)
+        print(i)
+        i+=1
 
     if flags.gzip:
         eprint("Closing %s" % flags.gzip)
