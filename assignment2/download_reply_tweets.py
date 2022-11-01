@@ -78,9 +78,10 @@ def retrieve_reply_tweets(line: str):
                               tweet_fields=['conversation_id',
                                             'created_at', 'public_metrics', 'in_reply_to_user_id'],
                               user_fields=['public_metrics', 'verified'],
-                              max_results=100)
+                              max_results=100).flatten(limit=100)
         for tweet in paginator:
-            print(tweet.data).flatten(limit=100)
+            print(tweet.data)
+        
     except KeyboardInterrupt:
         eprint()
     except AttributeError:
