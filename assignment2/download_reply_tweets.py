@@ -1,16 +1,11 @@
-"""Collect tweets from Twitter streaming API via tweepy"""
-
 import argparse
 import datetime
 import gzip
 import os
 import sys
 import time
-import pandas as pd
 import json
 from tweepy import Stream, Client, StreamingClient, StreamRule, Paginator
-
-MAX_TWEETS = 50
 
 
 def eprint(*args, **kwargs):
@@ -68,19 +63,54 @@ class CustomStreamingClient(StreamingClient):
         eprint(status_code)
 
 
+def retrieve_reply_tweets(line: str):
+    """Blablabla
+    """
+    og_tweet = json.loads(line)
+    conversation_id_str = "conversation_id:" + str(og_tweet['conversation_id'])
+    # Run query to get tweets
+    eprint("Getting reply tweets for " + conversation_id_str)
+    try:
+        paginator = Paginator(twitter_client.search_recent_tweets,
+                              query=conversation_id_str,
+                              expansions=[
+                                  'author_id', 'entities.mentions.username', 'in_reply_to_user_id'],
+                              tweet_fields=['conversation_id',
+                                            'created_at', 'public_metrics', 'in_reply_to_user_id'],
+                              user_fields=['public_metrics', 'verified'],
+                              max_results=100)
+        for tweet in paginator:
+            print(tweet.data).flatten(limit=100)
+    except KeyboardInterrupt:
+        eprint()
+    except AttributeError:
+        # Catch rare occasion when Streaming API returns None
+        pass
+    pass
+
+
 if __name__ == "__main__":
     # Set up the argument parser
     parser = argparse.ArgumentParser(
         description="Fetch data with Twitter Streaming API"
     )
     parser.add_argument(
-        "--user_file", help="file with legislators' twitter information", required=True)
-    parser.add_argument(
         "--keyfile", help="file with user credentials", required=True)
     parser.add_argument(
         "--gzip", metavar="OUTPUT_FILE", help="file to write compressed results to"
     )
     flags = parser.parse_args()
+
+    # Write tweets to stdout or a gzipped file, as requested
+    if flags.gzip:
+        # Write to gzipped file
+        f = gzip.open(flags.gzip, "wb")
+        eprint("Writing gzipped output to %s" % flags.gzip)
+        sep = os.linesep.encode()
+        def output(x): return f.write(x + sep)
+    else:
+        # write to stdout
+        output = print
 
     # Read twitter app credentials and set up authentication
     creds = {}
@@ -93,17 +123,6 @@ if __name__ == "__main__":
     twitterstream = Stream(
         creds["api_key"], creds["api_secret"], creds["token"], creds["token_secret"]
     )
-
-    # Write tweets to stdout or a gzipped file, as requested
-    if flags.gzip:
-        # Write to gzipped file
-        f = gzip.open(flags.gzip, "wb")
-        eprint("Writing gzipped output to %s" % flags.gzip)
-        sep = os.linesep.encode()
-        def output(x): return f.write(x + sep)
-    else:
-        # write to stdout
-        output = print
 
     # Track time and start streaming
     starttime = datetime.datetime.now()
@@ -119,29 +138,8 @@ if __name__ == "__main__":
 
     # Start streaming
     eprint("Started running at", starttime)
-    try:
-        user_df = pd.read_csv(flags.user_file)
-        for user_id in user_df['twitter_id']:
-            # Run query to get tweets
-            eprint("Getting last 7 days of tweets for user: " + str(user_id))
-            paginator = Paginator(twitter_client.get_users_tweets,
-                                  id=user_id,
-                                  exclude=['retweets', 'replies'],
-                                  expansions='author_id',
-                                  tweet_fields=['conversation_id',
-                                                'created_at', 'public_metrics'],
-                                  user_fields='public_metrics',
-                                  start_time=(datetime.datetime.now() -
-                                              datetime.timedelta(days=7)),
-                                  max_results=100
-                                  ).flatten(limit=100)
-            for tweet in paginator:
-                print(json.dumps(tweet.data))
-    except KeyboardInterrupt:
-        eprint()
-    except AttributeError:
-        # Catch rare occasion when Streaming API returns None
-        pass
+    for line in sys.stdin:
+        retrieve_reply_tweets(line)
 
     if flags.gzip:
         eprint("Closing %s" % flags.gzip)
