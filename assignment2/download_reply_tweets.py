@@ -2,6 +2,8 @@ import argparse
 import datetime
 import gzip
 import os
+import re
+import numpy as np
 import sys
 import time
 import json
@@ -67,9 +69,11 @@ def retrieve_reply_tweets(line: str):
     """Blablabla
     """
     og_tweet = json.loads(line)
-    conversation_id_str = "conversation_id:" + str(og_tweet['conversation_id'])
+    conversation_id_str = "conversation_id:" + \
+        str(og_tweet['tweet_info']['conversation_id'])
+    count = og_tweet['tweet_info']['public_metrics']['reply_count']
     # Run query to get tweets
-    eprint("Getting reply tweets for " + conversation_id_str)
+    eprint("Getting reply tweets for " + conversation_id_str + " estimated replies: " + str(count))
     try:
         paginator = Paginator(twitter_client.search_recent_tweets,
                               query=conversation_id_str,
@@ -78,11 +82,17 @@ def retrieve_reply_tweets(line: str):
                               tweet_fields=['conversation_id',
                                             'created_at', 'public_metrics', 'in_reply_to_user_id'],
                               user_fields=['public_metrics', 'verified'],
-                              max_results=100).flatten(limit=100)
+                              max_results=100)
+        includes = {}
+        for response in paginator:
+            includes = response.includes['users'][0].data if 'users' in response.includes.keys() else {}
+            break
+        for tweet in paginator.flatten():
+            full_object = {}
+            full_object['user_info'] = includes
+            full_object['tweet_info'] = tweet.data
+            print(json.dumps(full_object))
 
-        for tweet in paginator:
-            print(tweet.data)
-        
     except KeyboardInterrupt:
         eprint()
     except AttributeError:
@@ -130,7 +140,8 @@ if __name__ == "__main__":
     starttime = datetime.datetime.now()
     twitter_streaming_client = CustomStreamingClient(
         write=output, bearer_token=creds["bearer_token"])
-    twitter_client = Client(bearer_token=creds["bearer_token"], wait_on_rate_limit=True)
+    twitter_client = Client(
+        bearer_token=creds["bearer_token"], wait_on_rate_limit=True)
 
     # Clear out old rules
     old_rules = twitter_streaming_client.get_rules()
@@ -141,11 +152,15 @@ if __name__ == "__main__":
     # Start streaming
     eprint("Started running at", starttime)
     i = 1
+    prob_sample = 0.3
     for line in sys.stdin:
-        retrieve_reply_tweets(line)
-        print(i)
-        i+=1
-
+        if np.random.uniform() < prob_sample:
+          retrieve_reply_tweets(line)
+          eprint(i)
+          i += 1
+        else:
+          continue
+        
     if flags.gzip:
         eprint("Closing %s" % flags.gzip)
         f.close()

@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import yaml
 import datetime
+import os
 
 def read_yaml(filename):
     with open(filename, 'r') as f:
@@ -36,14 +37,16 @@ if __name__ == "__main__":
     leg_soc = read_yaml('legislators-social-media.yaml')
 
     congress_df = pd.DataFrame(columns=['twitter_id', 'twitter_username', 'party'])
-    today = datetime.date.today()
+    # Use file creation time (~ date it was downloaded) as current date
+    creation_time = os.path.getctime('legislators-current.yaml')
+    date = datetime.datetime.fromtimestamp(creation_time).date()
 
     for leg in leg_cur:
-        party = get_party(leg['terms'], today)
+        party = get_party(leg['terms'], date)
         twitter_id, twitter_username = get_twitter_info(leg_soc, leg['id']['bioguide'])
 
         if twitter_id:
             congress_df = congress_df.append({'twitter_id': twitter_id, 'twitter_username': twitter_username,
                                               'party': party}, ignore_index = True)
 
-    congress_df.to_csv('congress_df_{}.csv'.format(today))
+    congress_df.to_csv('congress_df_{}.csv'.format(date.strftime("%Y-%m-%d")))

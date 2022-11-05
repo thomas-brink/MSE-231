@@ -134,9 +134,16 @@ if __name__ == "__main__":
                                   start_time=(datetime.datetime.now() -
                                               datetime.timedelta(days=7)),
                                   max_results=100
-                                  ).flatten(limit=100)
-            for tweet in paginator:
-                print(json.dumps(tweet.data))
+                                  )
+            includes = {}
+            for response in paginator:
+                includes = response.includes['users'][0].data if 'users' in response.includes.keys() else {}
+                break
+            for tweet in paginator.flatten(limit=2000):
+                full_object = {}
+                full_object['user_info'] = includes
+                full_object['tweet_info'] = tweet.data
+                print(json.dumps(full_object))
     except KeyboardInterrupt:
         eprint()
     except AttributeError:
