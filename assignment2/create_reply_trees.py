@@ -12,6 +12,7 @@ def eprint(*args, **kwargs):
     """Print to stderr"""
     print(*args, file=sys.stderr, **kwargs)
 
+
 def create_tweet_tree(tweet: json, cid_tree_dict: dict):
     ''' Set initial tweets as root notes of the trees
     '''
@@ -57,7 +58,7 @@ def create_tweet_graph_node(line: str, cid_graph_dict: dict):
     reply_tweet = json.loads(line)
     tweet_info = reply_tweet['tweet_info']
     cid = tweet_info['conversation_id']
-    if cid not in cid_tree_dict.keys():
+    if cid not in cid_graph_dict.keys():
         eprint(
             'Node: Reply tweet with no matching graph encountered, cid: {}'.format(cid))
     else:
@@ -65,14 +66,14 @@ def create_tweet_graph_node(line: str, cid_graph_dict: dict):
         graph = cid_graph_dict[cid]
         if author_id not in graph.nodes:
             graph.add_node(tweet_info['author_id'],
-                        public_metrics=reply_tweet['user_info']['public_metrics'])
+                           public_metrics=reply_tweet['user_info']['public_metrics'])
 
 
 def create_tweet_graph_edge(line: str, cid_graph_dict: dict):
     reply_tweet = json.loads(line)
     tweet_info = reply_tweet['tweet_info']
     cid = tweet_info['conversation_id']
-    if cid not in cid_tree_dict.keys():
+    if cid not in cid_graph_dict.keys():
         eprint(
             'Edge: Reply tweet with no matching graph encountered, cid: {}'.format(cid))
     else:
@@ -83,7 +84,7 @@ def create_tweet_graph_edge(line: str, cid_graph_dict: dict):
             graph.add_edge(author_id, in_reply_to)
 
 
-def reorder_trees(cid_tree_dict: dict):
+def reorder_trees(cid_tree_dict: dict, reply_mappings: dict):
     for cid, tree in cid_tree_dict.items():
         for node in tree.all_nodes():
             if node.is_root():
@@ -93,28 +94,18 @@ def reorder_trees(cid_tree_dict: dict):
                 parent_nid = reply_mappings.get(nid)
                 tree.move_node(nid, parent_nid)
             except:
-                eprint('Node with id {} is being removed from tree with cid {}' \
-                    .format(nid, cid))
+                eprint('Node with id {} is being removed from tree with cid {}'
+                       .format(nid, cid))
                 tree.remove_node(nid)
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Fetch data with Twitter Streaming API"
-    )
-    parser.add_argument(
-        "--initial_tweets", help="file with initial tweets", required=True)
-    parser.add_argument(
-        "--reply_tweets", help="file with reply tweets", required=True)
-    parser.add_argument(
-        "--reply_mappings", help="file with reply tweets mappings", required=True)
-    flags = parser.parse_args()
 
+def create_reply_trees_and_graphs(flags):
     # extract cids that we got replies for
     reply_cids = set()
     for line in open(flags.reply_tweets, "r"):
         tweet = json.loads(line)
         reply_cids.add(tweet['tweet_info']['conversation_id'])
-    
+
     # make roots of trees and graphs
     cid_tree_dict = {}
     cid_graph_dict = {}
@@ -138,10 +129,27 @@ if __name__ == "__main__":
         create_tweet_tree_node(line, cid_tree_dict)
         create_tweet_graph_node(line, cid_graph_dict)
 
-    reorder_trees(cid_tree_dict)
+    reorder_trees(cid_tree_dict, reply_mappings)
 
     for line in open(flags.reply_tweets, "r"):
         create_tweet_graph_edge(line, cid_graph_dict)
+
+    return cid_tree_dict, cid_graph_dict
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Fetch data with Twitter Streaming API"
+    )
+    parser.add_argument(
+        "--initial_tweets", help="file with initial tweets", required=True)
+    parser.add_argument(
+        "--reply_tweets", help="file with reply tweets", required=True)
+    parser.add_argument(
+        "--reply_mappings", help="file with reply tweets mappings", required=True)
+    flags = parser.parse_args()
+
+    cid_tree_dict, cid_graph_dict = create_reply_trees_and_graphs(flags)
 
     print('1587162493889044480')
     tree = cid_tree_dict['1587162493889044480']
