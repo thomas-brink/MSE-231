@@ -45,13 +45,14 @@ def create_tweet_tree_node(line: str, cid_tree_dict: dict):
     else:
         nid = tweet_info['id']
         tree = cid_tree_dict[cid]
-        try:
-            tree.create_node(nid, nid, parent=tree.root)
-        except:
-            tree[tree.root].data['has_dropped_node'] += 1
-            eprint('Tree with cid {} dropped node with nid {}, total dropped: {}'.format(
-                cid, nid, tree[tree.root].data['has_dropped_node']
-            ))
+        if nid not in tree.nodes:
+            try:
+                tree.create_node(nid, nid, parent=tree.root)
+            except:
+                tree[tree.root].data['has_dropped_node'] += 1
+                eprint('Tree with cid {} dropped node with nid {}, total dropped: {}'.format(
+                        cid, nid, tree[tree.root].data['has_dropped_node']
+                        ))
 
 
 def create_tweet_graph_node(line: str, cid_graph_dict: dict):
@@ -96,6 +97,7 @@ def reorder_trees(cid_tree_dict: dict, reply_mappings: dict):
             except:
                 eprint('Node with id {} is being removed from tree with cid {}'
                        .format(nid, cid))
+                tree[tree.root].data['has_dropped_node'] += len(tree.subtree(nid).nodes)
                 tree.remove_node(nid)
 
 
