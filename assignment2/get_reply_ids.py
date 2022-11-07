@@ -25,6 +25,7 @@ import argparse
 import datetime
 import sys
 import json
+import traceback
 from tweepy import Stream, Client, StreamingClient, StreamRule, Paginator
 
 
@@ -52,6 +53,7 @@ class CustomStreamingClient(StreamingClient):
     def on_error(self, status_code):
         eprint(status_code)
 
+
 def retrieve_reply_to_tweets(id_lst: list):
     """Takes in a list of tweet ids.
     Retrieves the tweet id to which it was replying if applicable,
@@ -59,15 +61,31 @@ def retrieve_reply_to_tweets(id_lst: list):
     """
     count = 0
     try:
-        tweet_info = twitter_client.get_tweets(ids=id_lst, tweet_fields=['referenced_tweets'])
+        tweet_info = twitter_client.get_tweets(
+            ids=id_lst,
+            expansions='author_id',
+            tweet_fields=['referenced_tweets'],
+            user_fields=['public_metrics', 'verified']
+        )
+        users = {}
+        for userObj in tweet_info.includes['users']:
+            user = userObj.data
+            users[user['id']] = user
         for tweet in tweet_info.data:
+            replied_to = []
             for ref_tweet in tweet.referenced_tweets:
                 if ref_tweet.type == 'replied_to':
-                    print(dict({'id': tweet.id, 'replied_to_tweet_id': ref_tweet.id}))
-                    count += 1
-                    break
+                    replied_to.append(ref_tweet.id)
+            if replied_to:
+                count += 1
+                print(dict({
+                    'id': tweet.id,
+                    'replied_to_tweet_ids': replied_to,
+                    'user_info': users[str(tweet['author_id'])]
+                }))
         eprint(count)
-    except:
+    except Exception:
+        traceback.print_exc()
         eprint('smth went wrong')
 
 
@@ -97,7 +115,7 @@ if __name__ == "__main__":
     # Track time and start streaming
     starttime = datetime.datetime.now()
     twitter_streaming_client = CustomStreamingClient(
-        write=output, bearer_token=creds["bearer_token"])
+        write=print, bearer_token=creds["bearer_token"])
     twitter_client = Client(
         bearer_token=creds["bearer_token"], wait_on_rate_limit=True)
 
@@ -118,6 +136,6 @@ if __name__ == "__main__":
             id_100_list = []
 
     if len(id_100_list) != 0:
-        retrieve_reply_tweets(id_100_list)
+        retrieve_reply_to_tweets(id_100_list)
 
     eprint("total run time", datetime.datetime.now() - starttime)

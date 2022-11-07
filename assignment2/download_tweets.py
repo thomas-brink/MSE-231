@@ -107,14 +107,14 @@ if __name__ == "__main__":
                                   max_results=100
                                   )
             # Extract user information and print each flattened tweet as a json
-            includes = {}
+            users = {}
             for response in paginator:
-                includes = response.includes['users'][0].data if 'users' in response.includes.keys() else {
-                }
-                break
+                for userObj in response.includes['users']:
+                    user = userObj.data
+                    users[user['id']] = user
             for tweet in paginator.flatten(limit=2000):
                 full_object = {}
-                full_object['user_info'] = includes
+                full_object['user_info'] = users[str(tweet['author_id'])]
                 full_object['tweet_info'] = tweet.data
                 print(json.dumps(full_object))
     except KeyboardInterrupt:

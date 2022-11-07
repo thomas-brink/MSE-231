@@ -28,47 +28,54 @@ import ast
 import sys
 import numpy as np
 import networkx
+import traceback
 from treelib import Node, Tree
 
 
 def eprint(*args, **kwargs):
-    """Print to stderr"""
+    """Print to stderr
+    """
     print(*args, file=sys.stderr, **kwargs)
 
 
 def create_tweet_tree(tweet: json, cid_tree_dict: dict):
-    ''' Set initial tweets as root notes of the trees
-    '''
-    tree = Tree()
+    """Create a reply tree with the original tweet as the root note.
+    """
     tweet_info = tweet['tweet_info']
-    tweet_info['public_metrics']['has_dropped_node'] = 0
-    tree.create_node(tweet_info['id'], tweet_info['id'],
-                     data=tweet_info['public_metrics'])
-    cid_tree_dict[tweet_info['conversation_id']] = tree
+    cid = tweet_info['conversation_id']
+    tweet_id = tweet_info['id']
+    if cid == tweet_id: # Only make a tree once we've found the original tweet
+        tree = Tree()
+        tweet_info['public_metrics']['has_dropped_node'] = 0
+        tree.create_node(tweet_id, tweet_id, data=tweet_info['public_metrics'])
+        cid_tree_dict[cid] = tree
 
 
 def create_tweet_graph(tweet: json, cid_graph_dict: dict):
-    ''' Set initial tweets as initial node in the graph
-    '''
-    graph = networkx.DiGraph()
+    """Create a user graph with the original tweet's author as the inital node.
+    """
     tweet_info = tweet['tweet_info']
-    graph.add_node(tweet_info['author_id'],
-                   public_metrics=tweet['user_info']['public_metrics'])
-    cid_graph_dict[tweet_info['conversation_id']] = graph
+    cid = tweet_info['conversation_id']
+    tweet_id = tweet_info['id']
+    if cid == tweet_id: # Only make a graph once we've found the original tweet
+        graph = networkx.DiGraph()
+        graph.add_node(tweet_info['author_id'],
+                       public_metrics=tweet['user_info']['public_metrics'])
+        cid_graph_dict[cid] = graph
 
 
-def create_tweet_tree_node(line: str, cid_tree_dict: dict):
-    ''' Add nodes to existing tweet trees
-    '''
-    reply_tweet = json.loads(line)
-    tweet_info = reply_tweet['tweet_info']
+def create_tweet_tree_node(tweet: json, cid_tree_dict: dict):
+    """Add a node for the tweet to the conversation's tweet tree with the root
+       node as the default parent.
+    """
+    tweet_info = tweet['tweet_info']
     cid = tweet_info['conversation_id']
     if cid not in cid_tree_dict.keys():
-        eprint('Reply tweet with no matching tree encountered, cid: {}'.format(cid))
+        pass # Reply tweet with no matching cid (original tweet not available)
     else:
-        nid = tweet_info['id']
         tree = cid_tree_dict[cid]
-        if nid not in tree.nodes:
+        nid = tweet_info['id']
+        if nid not in tree.nodes: # Some tweets have the same id
             try:
                 tree.create_node(nid, nid, parent=tree.root)
             except:
@@ -78,86 +85,119 @@ def create_tweet_tree_node(line: str, cid_tree_dict: dict):
                         ))
 
 
-def create_tweet_graph_node(line: str, cid_graph_dict: dict):
-    reply_tweet = json.loads(line)
-    tweet_info = reply_tweet['tweet_info']
+def create_tweet_graph_node(tweet: json, cid_graph_dict: dict, reply_user_mappings: dict):
+    """Add a node for the reply tweet author to the conversation's user graph.
+    """
+    tweet_info = tweet['tweet_info']
     cid = tweet_info['conversation_id']
     if cid not in cid_graph_dict.keys():
-        eprint(
-            'Node: Reply tweet with no matching graph encountered, cid: {}'.format(cid))
+        pass # Reply tweet with no matching cid (original tweet not available)
     else:
-        author_id = tweet_info['author_id']
         graph = cid_graph_dict[cid]
+        author_id = tweet_info['author_id']
         if author_id not in graph.nodes:
-            graph.add_node(tweet_info['author_id'],
-                           public_metrics=reply_tweet['user_info']['public_metrics'])
+            graph.add_node(author_id,
+                           public_metrics=reply_user_mappings[str(tweet_info['id'])])
 
 
-def create_tweet_graph_edge(line: str, cid_graph_dict: dict):
-    reply_tweet = json.loads(line)
-    tweet_info = reply_tweet['tweet_info']
+def create_tweet_graph_edge(tweet: json, cid_graph_dict: dict):
+    """Add edge from the author_id to the id of the user to whom they tweet
+       is replying to the conversation's user graph.
+    """
+    tweet_info = tweet['tweet_info']
     cid = tweet_info['conversation_id']
     if cid not in cid_graph_dict.keys():
-        eprint(
-            'Edge: Reply tweet with no matching graph encountered, cid: {}'.format(cid))
+        pass # Reply tweet with no matching cid (original tweet not available)
     else:
+        graph = cid_graph_dict[cid]
         author_id = tweet_info['author_id']
         in_reply_to = tweet_info['in_reply_to_user_id']
-        graph = cid_graph_dict[cid]
         if (author_id, in_reply_to) not in graph.edges:
             graph.add_edge(author_id, in_reply_to)
 
 
 def reorder_trees(cid_tree_dict: dict, reply_mappings: dict):
+    """Once all nodes have been added, connect the nodes to the correct parent
+       using the reply to mappings.
+    """
     for cid, tree in cid_tree_dict.items():
         for node in tree.all_nodes():
             if node.is_root():
                 continue  # don't drop the root node
             nid = node.identifier
+            parent_nid = reply_mappings.get(nid)
             try:
-                parent_nid = reply_mappings.get(nid)
                 tree.move_node(nid, parent_nid)
             except:
-                eprint('Node with id {} is being removed from tree with cid {}'
-                       .format(nid, cid))
-                tree[tree.root].data['has_dropped_node'] += len(tree.subtree(nid).nodes)
+                nodes_dropped = len(tree.subtree(nid).nodes)
+                tree[tree.root].data['has_dropped_node'] += nodes_dropped
+                if parent_nid == None:
+                    pass # Tweet could have been deleted
+                else:
+                    pass # Tweet not available to be pulled (not public,
+                         # not in scope of 7 days, etc.)
                 tree.remove_node(nid)
 
 
-def create_reply_trees_and_graphs(flags):
-    # extract cids that we got replies for
+def create_reply_trees_and_graphs(reply_tweets, initial_tweets, reply_mappings):
+    """Parse through the collected data and build the reply trees
+       and user graphs.
+    """
+    # Extract cids for which we got replies.
     reply_cids = set()
-    for line in open(flags.reply_tweets, "r"):
+    for line in open(reply_tweets, "r"):
         tweet = json.loads(line)
         reply_cids.add(tweet['tweet_info']['conversation_id'])
+    
+    eprint('Number of reply cids found: {}'.format(len(reply_cids)))
 
-    # make roots of trees and graphs
+    # Make trees and graphs.
     cid_tree_dict = {}
     cid_graph_dict = {}
-    prob_sample = 0.3
-    for line in open(flags.initial_tweets, "r"):
-        reply_tweet = json.loads(line)
-        cid = reply_tweet['tweet_info']['conversation_id']
-        reply_count = reply_tweet['tweet_info']['public_metrics']['reply_count']
+    prob_sample = 0.3 
+    for line in open(initial_tweets, "r"):
+        tweet = json.loads(line)
+        cid = tweet['tweet_info']['conversation_id']
+        reply_count = tweet['tweet_info']['public_metrics']['reply_count']
+        # Only include conversations for which we retrieved replies
+        # and randomly select conversations with no replies.
         if cid in reply_cids or (reply_count == 0 and np.random.uniform() < prob_sample):
-            create_tweet_tree(reply_tweet, cid_tree_dict)
-            create_tweet_graph(reply_tweet, cid_graph_dict)
+            create_tweet_tree(tweet, cid_tree_dict)
+            create_tweet_graph(tweet, cid_graph_dict)
+    
+    eprint('Length of cid_tree_dict: {}, length of cid_graph_dict: {}'
+           .format(len(cid_tree_dict), len(cid_graph_dict)))
 
-    print(len(cid_tree_dict), len(cid_graph_dict))
-
-    reply_mappings = {}
-    for line in open(flags.reply_mappings, "r"):
+    # Build dictionary of tweet ids to which reply tweets are replying
+    reply_to_mappings = {}
+    # Build dictionary of user info of reply tweets
+    reply_user_mappings = {}
+    for line in open(reply_mappings, "r"):
         data = ast.literal_eval(line)
-        reply_mappings[str(data['id'])] = str(data['replied_to_tweet_id'])
+        reply_to_mappings[str(data['id'])] = str(data['replied_to_tweet_ids'])
+        reply_user_mappings[str(data['id'])] = str(data['user_info'])
+    
+    # Add replies that were pulled when pulling original conversations
+    for line in open(initial_tweets, "r"):
+        tweet = json.loads(line)
+        tweet_info = tweet['tweet_info']
+        if tweet_info['id'] != tweet_info['conversation_id']:
+            create_tweet_tree_node(tweet, cid_tree_dict)
+            create_tweet_graph_node(tweet, cid_graph_dict, reply_user_mappings)
 
-    for line in open(flags.reply_tweets, "r"):
-        create_tweet_tree_node(line, cid_tree_dict)
-        create_tweet_graph_node(line, cid_graph_dict)
+    # Add reply tweets to reply trees and user graphs
+    for line in open(reply_tweets, "r"):
+        tweet = json.loads(line)
+        create_tweet_tree_node(tweet, cid_tree_dict)
+        create_tweet_graph_node(tweet, cid_graph_dict, reply_user_mappings)
 
+    # Reassign parents in reply tweets using reply mappings
     reorder_trees(cid_tree_dict, reply_mappings)
 
-    for line in open(flags.reply_tweets, "r"):
-        create_tweet_graph_edge(line, cid_graph_dict)
+    # Add edges to user graph
+    for line in open(reply_tweets, "r"):
+        tweet = json.loads(line)
+        create_tweet_graph_edge(tweet, cid_graph_dict)
 
     return cid_tree_dict, cid_graph_dict
 
@@ -175,7 +215,9 @@ if __name__ == "__main__":
     flags = parser.parse_args()
     print(flags)
 
-    # cid_tree_dict, cid_graph_dict = create_reply_trees_and_graphs(flags)
+    cid_tree_dict, cid_graph_dict = create_reply_trees_and_graphs(
+        flags.reply_tweets, flags.initial_tweets, flags.reply_mappings
+    )
 
     # print('1587162493889044480')
     # tree = cid_tree_dict['1587162493889044480']
