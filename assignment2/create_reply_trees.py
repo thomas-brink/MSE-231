@@ -47,6 +47,7 @@ def create_tweet_tree(tweet: json, cid_tree_dict: dict):
     if cid == tweet_id: # Only make a tree once we've found the original tweet
         tree = Tree()
         tweet_info['public_metrics']['has_dropped_node'] = 0
+                tweet_info['public_metrics']['author_id'] = tweet_info['author_id']
         tree.create_node(tweet_id, tweet_id, data=tweet_info['public_metrics'])
         cid_tree_dict[cid] = tree
 
@@ -80,9 +81,6 @@ def create_tweet_tree_node(tweet: json, cid_tree_dict: dict):
                 tree.create_node(nid, nid, parent=tree.root)
             except:
                 tree[tree.root].data['has_dropped_node'] += 1
-                eprint('Tree with cid {} dropped node with nid {}, total dropped: {}'.format(
-                        cid, nid, tree[tree.root].data['has_dropped_node']
-                        ))
 
 
 def create_tweet_graph_node(tweet: json, cid_graph_dict: dict, reply_user_mappings: dict):
@@ -96,8 +94,11 @@ def create_tweet_graph_node(tweet: json, cid_graph_dict: dict, reply_user_mappin
         graph = cid_graph_dict[cid]
         author_id = tweet_info['author_id']
         if author_id not in graph.nodes:
-            graph.add_node(author_id,
+            try:
+                graph.add_node(author_id,
                            public_metrics=reply_user_mappings[str(tweet_info['id'])])
+            except:
+                pass # User information could not be pulled for node
 
 
 def create_tweet_graph_edge(tweet: json, cid_graph_dict: dict):
@@ -113,7 +114,10 @@ def create_tweet_graph_edge(tweet: json, cid_graph_dict: dict):
         author_id = tweet_info['author_id']
         in_reply_to = tweet_info['in_reply_to_user_id']
         if (author_id, in_reply_to) not in graph.edges:
-            graph.add_edge(author_id, in_reply_to)
+            try:
+                graph.add_edge(author_id, in_reply_to)
+            except:
+                pass # One of the nodes could not be added
 
 
 def reorder_trees(cid_tree_dict: dict, reply_mappings: dict):
@@ -125,19 +129,16 @@ def reorder_trees(cid_tree_dict: dict, reply_mappings: dict):
             if node.is_root():
                 continue  # don't drop the root node
             nid = node.identifier
-            parent_nid = reply_mappings.get(nid)
-            try:
+            try: 
+                parent_nid = reply_mappings.get(nid)
                 tree.move_node(nid, parent_nid)
             except:
-                nodes_dropped = len(tree.subtree(nid).nodes)
-                tree[tree.root].data['has_dropped_node'] += nodes_dropped
-                if parent_nid == None:
-                    pass # Tweet could have been deleted
-                else:
-                    pass # Tweet not available to be pulled (not public,
-                         # not in scope of 7 days, etc.)
-                tree.remove_node(nid)
+                drop_node(nid, tree)
 
+def drop_node(nid: str, tree: Tree):
+    nodes_dropped = len(tree.subtree(nid).nodes)
+    tree[tree.root].data['has_dropped_node'] += nodes_dropped
+    tree.remove_node(nid)
 
 def create_reply_trees_and_graphs(reply_tweets, initial_tweets, reply_mappings):
     """Parse through the collected data and build the reply trees
@@ -145,7 +146,7 @@ def create_reply_trees_and_graphs(reply_tweets, initial_tweets, reply_mappings):
     """
     # Extract cids for which we got replies.
     reply_cids = set()
-    for line in open(reply_tweets, "r"):
+    for line in open(reply_tweets, 'r', encoding='utf-8'):
         tweet = json.loads(line)
         reply_cids.add(tweet['tweet_info']['conversation_id'])
     
@@ -155,7 +156,7 @@ def create_reply_trees_and_graphs(reply_tweets, initial_tweets, reply_mappings):
     cid_tree_dict = {}
     cid_graph_dict = {}
     prob_sample = 0.3 
-    for line in open(initial_tweets, "r"):
+    for line in open(initial_tweets, 'r', encoding='utf-8'):
         tweet = json.loads(line)
         cid = tweet['tweet_info']['conversation_id']
         reply_count = tweet['tweet_info']['public_metrics']['reply_count']
@@ -172,13 +173,15 @@ def create_reply_trees_and_graphs(reply_tweets, initial_tweets, reply_mappings):
     reply_to_mappings = {}
     # Build dictionary of user info of reply tweets
     reply_user_mappings = {}
-    for line in open(reply_mappings, "r"):
+    for line in open(reply_mappings, 'r', encoding='utf-8'):
         data = ast.literal_eval(line)
-        reply_to_mappings[str(data['id'])] = str(data['replied_to_tweet_ids'])
+        reply_to_mappings[str(data['id'])] = str(data['replied_to_tweet_id'])
         reply_user_mappings[str(data['id'])] = str(data['user_info'])
+        
+    eprint('Built mapping dictionaries.')
     
     # Add replies that were pulled when pulling original conversations
-    for line in open(initial_tweets, "r"):
+    for line in open(initial_tweets, 'r', encoding='utf-8'):
         tweet = json.loads(line)
         tweet_info = tweet['tweet_info']
         if tweet_info['id'] != tweet_info['conversation_id']:
@@ -186,19 +189,25 @@ def create_reply_trees_and_graphs(reply_tweets, initial_tweets, reply_mappings):
             create_tweet_graph_node(tweet, cid_graph_dict, reply_user_mappings)
 
     # Add reply tweets to reply trees and user graphs
-    for line in open(reply_tweets, "r"):
+    for line in open(reply_tweets, 'r', encoding='utf-8'):
         tweet = json.loads(line)
         create_tweet_tree_node(tweet, cid_tree_dict)
         create_tweet_graph_node(tweet, cid_graph_dict, reply_user_mappings)
+        
+    eprint('Added nodes to trees and graphs.')
 
     # Reassign parents in reply tweets using reply mappings
-    reorder_trees(cid_tree_dict, reply_mappings)
+    reorder_trees(cid_tree_dict, reply_to_mappings)
+    
+    eprint('Rerordered trees.')
 
     # Add edges to user graph
-    for line in open(reply_tweets, "r"):
+    for line in open(reply_tweets, 'r', encoding='utf-8'):
         tweet = json.loads(line)
         create_tweet_graph_edge(tweet, cid_graph_dict)
-
+        
+    eprint('Added graph edges.')
+    
     return cid_tree_dict, cid_graph_dict
 
 

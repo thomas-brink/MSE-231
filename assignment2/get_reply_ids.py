@@ -72,21 +72,17 @@ def retrieve_reply_to_tweets(id_lst: list):
             user = userObj.data
             users[user['id']] = user
         for tweet in tweet_info.data:
-            replied_to = []
             for ref_tweet in tweet.referenced_tweets:
                 if ref_tweet.type == 'replied_to':
-                    replied_to.append(ref_tweet.id)
-            if replied_to:
-                count += 1
-                print(dict({
-                    'id': tweet.id,
-                    'replied_to_tweet_ids': replied_to,
-                    'user_info': users[str(tweet['author_id'])]
-                }))
+                    print(dict({
+                        'id': tweet.id,
+                        'replied_to_tweet_id': ref_tweet.id,
+                        'user_info': users[str(tweet['author_id'])]
+                    }))
+                    count += 1
         eprint(count)
     except Exception:
         traceback.print_exc()
-        eprint('smth went wrong')
 
 
 if __name__ == "__main__":
