@@ -26,9 +26,12 @@ from array import array
 import json
 import ast
 import sys
+import codecs
 import numpy as np
 import networkx
 import traceback
+import matplotlib.pyplot as plt
+from graphviz import Source
 from treelib import Node, Tree
 
 
@@ -44,7 +47,7 @@ def create_tweet_tree(tweet: json, cid_tree_dict: dict):
     tweet_info = tweet['tweet_info']
     cid = tweet_info['conversation_id']
     tweet_id = tweet_info['id']
-    if cid == tweet_id: # Only make a tree once we've found the original tweet
+    if cid == tweet_id:  # Only make a tree once we've found the original tweet
         tree = Tree()
         tweet_info['public_metrics']['dropped_node_count'] = 0
         tweet_info['public_metrics']['author_id'] = tweet_info['author_id']
@@ -58,7 +61,7 @@ def create_tweet_graph(tweet: json, cid_graph_dict: dict):
     tweet_info = tweet['tweet_info']
     cid = tweet_info['conversation_id']
     tweet_id = tweet_info['id']
-    if cid == tweet_id: # Only make a graph once we've found the original tweet
+    if cid == tweet_id:  # Only make a graph once we've found the original tweet
         graph = networkx.DiGraph(dropped_edge_count=0, dropped_node_count=0)
         graph.add_node(tweet_info['author_id'],
                        public_metrics=tweet['user_info']['public_metrics'])
@@ -72,11 +75,11 @@ def create_tweet_tree_node(tweet: json, cid_tree_dict: dict):
     tweet_info = tweet['tweet_info']
     cid = tweet_info['conversation_id']
     if cid not in cid_tree_dict.keys():
-        pass # Reply tweet with no matching cid (original tweet not available)
+        pass  # Reply tweet with no matching cid (original tweet not available)
     else:
         tree = cid_tree_dict[cid]
         nid = tweet_info['id']
-        if nid not in tree.nodes: # Some tweets have the same id
+        if nid not in tree.nodes:  # Some tweets have the same id
             try:
                 tree.create_node(nid, nid, parent=tree.root)
             except:
@@ -89,14 +92,16 @@ def create_tweet_graph_node(tweet: json, cid_graph_dict: dict, reply_user_mappin
     tweet_info = tweet['tweet_info']
     cid = tweet_info['conversation_id']
     if cid not in cid_graph_dict.keys():
-        pass # Reply tweet with no matching cid (original tweet not available)
+        pass  # Reply tweet with no matching cid (original tweet not available)
     else:
         graph = cid_graph_dict[cid]
         author_id = tweet_info['author_id']
         if author_id not in graph.nodes:
             try:
+                d = ast.literal_eval(
+                    reply_user_mappings[str(tweet_info['id'])])
                 graph.add_node(author_id,
-                           public_metrics=reply_user_mappings[str(tweet_info['id'])])
+                               public_metrics=d['public_metrics'])
             except:
                 # User information could not be pulled for node
                 graph.graph['dropped_node_count'] += 1
@@ -109,7 +114,7 @@ def create_tweet_graph_edge(tweet: json, cid_graph_dict: dict):
     tweet_info = tweet['tweet_info']
     cid = tweet_info['conversation_id']
     if cid not in cid_graph_dict.keys():
-        pass # Reply tweet with no matching cid (original tweet not available)
+        pass  # Reply tweet with no matching cid (original tweet not available)
     else:
         graph = cid_graph_dict[cid]
         author_id = tweet_info['author_id']
@@ -131,16 +136,18 @@ def reorder_trees(cid_tree_dict: dict, reply_mappings: dict):
             if node.is_root():
                 continue  # don't drop the root node
             nid = node.identifier
-            try: 
+            try:
                 parent_nid = reply_mappings.get(nid)
                 tree.move_node(nid, parent_nid)
             except:
                 drop_node(nid, tree)
 
+
 def drop_node(nid: str, tree: Tree):
     nodes_dropped = len(tree.subtree(nid).nodes)
     tree[tree.root].data['dropped_node_count'] += nodes_dropped
     tree.remove_node(nid)
+
 
 def create_reply_trees_and_graphs(reply_tweets, initial_tweets, reply_mappings):
     """Parse through the collected data and build the reply trees
@@ -151,13 +158,13 @@ def create_reply_trees_and_graphs(reply_tweets, initial_tweets, reply_mappings):
     for line in open(reply_tweets, 'r', encoding='utf-8'):
         tweet = json.loads(line)
         reply_cids.add(tweet['tweet_info']['conversation_id'])
-    
+
     eprint('Number of reply cids found: {}'.format(len(reply_cids)))
 
     # Make trees and graphs.
     cid_tree_dict = {}
     cid_graph_dict = {}
-    prob_sample = 0.3 
+    prob_sample = 0.3
     for line in open(initial_tweets, 'r', encoding='utf-8'):
         tweet = json.loads(line)
         cid = tweet['tweet_info']['conversation_id']
@@ -167,7 +174,7 @@ def create_reply_trees_and_graphs(reply_tweets, initial_tweets, reply_mappings):
         if cid in reply_cids or (reply_count == 0 and np.random.uniform() < prob_sample):
             create_tweet_tree(tweet, cid_tree_dict)
             create_tweet_graph(tweet, cid_graph_dict)
-    
+
     eprint('Length of cid_tree_dict: {}, length of cid_graph_dict: {}'
            .format(len(cid_tree_dict), len(cid_graph_dict)))
 
@@ -179,9 +186,9 @@ def create_reply_trees_and_graphs(reply_tweets, initial_tweets, reply_mappings):
         data = ast.literal_eval(line)
         reply_to_mappings[str(data['id'])] = str(data['replied_to_tweet_id'])
         reply_user_mappings[str(data['id'])] = str(data['user_info'])
-        
+
     eprint('Built mapping dictionaries.')
-    
+
     # Add replies that were pulled when pulling original conversations
     for line in open(initial_tweets, 'r', encoding='utf-8'):
         tweet = json.loads(line)
@@ -195,22 +202,102 @@ def create_reply_trees_and_graphs(reply_tweets, initial_tweets, reply_mappings):
         tweet = json.loads(line)
         create_tweet_tree_node(tweet, cid_tree_dict)
         create_tweet_graph_node(tweet, cid_graph_dict, reply_user_mappings)
-        
+
     eprint('Added nodes to trees and graphs.')
 
     # Reassign parents in reply tweets using reply mappings
     reorder_trees(cid_tree_dict, reply_to_mappings)
-    
+
     eprint('Rerordered trees.')
 
     # Add edges to user graph
     for line in open(reply_tweets, 'r', encoding='utf-8'):
         tweet = json.loads(line)
         create_tweet_graph_edge(tweet, cid_graph_dict)
-        
+
     eprint('Added graph edges.')
-    
+
     return cid_tree_dict, cid_graph_dict
+
+
+def to_graphviz(tree, filename, shape='circle', graph='digraph'):
+    """Exports the tree in the dot format of the graphviz software.
+       Modified from the source code of the to_graphviz method of
+       the treelib tree.
+    """
+    nodes, connections = [], []
+    if tree.nodes:
+
+        for n in tree.expand_tree(mode=tree.WIDTH):
+            nid = tree[n].identifier
+            state = '"{0}" [label="", shape={1}, width="0.05", penwidth="0.1", style="filled", fillcolor="#1f77b4"]'.format(
+                nid, shape)
+            nodes.append(state)
+
+            for c in tree.children(nid):
+                cid = c.identifier
+                connections.append(
+                    '"{0}" -> "{1}" [arrowsize="0.1", penwidth="0.1"]'.format(nid, cid))
+
+    # write nodes and connections to dot format
+    is_plain_file = filename is not None
+    if is_plain_file:
+        f = codecs.open(filename, 'w', 'utf-8')
+    else:
+        f = StringIO()
+
+    f.write(graph + ' tree {\n')
+    f.write('\tgraph [nodesep="0.04", ranksep="0.02"]\n')
+    for n in nodes:
+        f.write('\t' + n + '\n')
+
+    if len(connections) > 0:
+        f.write('\n')
+
+    for c in connections:
+        f.write('\t' + c + '\n')
+
+    f.write('}')
+
+    if not is_plain_file:
+        print(f.getvalue())
+
+
+def create_reply_tree_viz(cid_tree_dict, filename='reply_tree_viz'):
+    """ Function that creates a visualization for a reply tree given some arguments.
+    """
+    for cid, tree in cid_tree_dict.items():
+        if tree.depth() > 10 and tree.size() < 150:
+            to_graphviz(tree, filename + '.dot')
+            s = Source.from_file(filename + '.dot')
+            print('Visualization of reply tree of cid {} created.'.format(cid))
+            s.view(filename)
+            break
+
+
+def create_reply_graph_viz(cid_graph_dict, filename='reply_graph_viz.pdf'):
+    """ Function that visualizes a reply graph given some arguments.
+    """
+    for cid, graph in cid_graph_dict.items():
+        if graph.size() > 25 and graph.size() < 50:
+            plt.figure(1)
+            pos = networkx.spring_layout(graph)
+            # Create sorted list of nodes so color corresponds to follower count
+            sorted_nodes = sorted(graph.nodes(
+            ), key=lambda node: graph.nodes[node]['public_metrics']['followers_count'])
+            nodes = networkx.draw_networkx_nodes(
+                graph,
+                pos,
+                nodelist=sorted_nodes,
+                node_size=100,
+                node_color=range(graph.number_of_nodes()),
+                cmap=plt.cm.Blues
+            )
+            nodes.set_edgecolor('black')
+            networkx.draw_networkx_edges(graph, pos, node_size=100)
+            print('Visualization of reply graph of cid {} created.'.format(cid))
+            plt.savefig(filename)
+            break
 
 
 if __name__ == "__main__":
@@ -224,18 +311,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--reply_mappings", help="file with reply tweets mappings", required=True)
     flags = parser.parse_args()
-    print(flags)
 
     cid_tree_dict, cid_graph_dict = create_reply_trees_and_graphs(
         flags.reply_tweets, flags.initial_tweets, flags.reply_mappings
     )
 
-    # print('1587162493889044480')
-    # tree = cid_tree_dict['1587162493889044480']
-    # print(tree.show())
-    # graph = cid_graph_dict['1587162493889044480']
-    # print('nodes: ', graph.nodes)
-    # print('edges: ', graph.edges)
-
-    # for key, value in cid_graph_dict.items():
-    #   print(key, value)
+    create_reply_tree_viz(cid_tree_dict)
+    create_reply_graph_viz(cid_graph_dict)
