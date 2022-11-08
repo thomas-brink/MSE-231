@@ -46,8 +46,8 @@ def create_tweet_tree(tweet: json, cid_tree_dict: dict):
     tweet_id = tweet_info['id']
     if cid == tweet_id: # Only make a tree once we've found the original tweet
         tree = Tree()
-        tweet_info['public_metrics']['has_dropped_node'] = 0
-                tweet_info['public_metrics']['author_id'] = tweet_info['author_id']
+        tweet_info['public_metrics']['dropped_node_count'] = 0
+        tweet_info['public_metrics']['author_id'] = tweet_info['author_id']
         tree.create_node(tweet_id, tweet_id, data=tweet_info['public_metrics'])
         cid_tree_dict[cid] = tree
 
@@ -59,7 +59,7 @@ def create_tweet_graph(tweet: json, cid_graph_dict: dict):
     cid = tweet_info['conversation_id']
     tweet_id = tweet_info['id']
     if cid == tweet_id: # Only make a graph once we've found the original tweet
-        graph = networkx.DiGraph()
+        graph = networkx.DiGraph(dropped_edge_count=0, dropped_node_count=0)
         graph.add_node(tweet_info['author_id'],
                        public_metrics=tweet['user_info']['public_metrics'])
         cid_graph_dict[cid] = graph
@@ -80,7 +80,7 @@ def create_tweet_tree_node(tweet: json, cid_tree_dict: dict):
             try:
                 tree.create_node(nid, nid, parent=tree.root)
             except:
-                tree[tree.root].data['has_dropped_node'] += 1
+                tree[tree.root].data['dropped_node_count'] += 1
 
 
 def create_tweet_graph_node(tweet: json, cid_graph_dict: dict, reply_user_mappings: dict):
@@ -98,7 +98,8 @@ def create_tweet_graph_node(tweet: json, cid_graph_dict: dict, reply_user_mappin
                 graph.add_node(author_id,
                            public_metrics=reply_user_mappings[str(tweet_info['id'])])
             except:
-                pass # User information could not be pulled for node
+                # User information could not be pulled for node
+                graph.graph['dropped_node_count'] += 1
 
 
 def create_tweet_graph_edge(tweet: json, cid_graph_dict: dict):
@@ -117,7 +118,8 @@ def create_tweet_graph_edge(tweet: json, cid_graph_dict: dict):
             try:
                 graph.add_edge(author_id, in_reply_to)
             except:
-                pass # One of the nodes could not be added
+                # One of the nodes could not be added
+                graph.graph['dropped_edge_count'] += 1
 
 
 def reorder_trees(cid_tree_dict: dict, reply_mappings: dict):
@@ -137,7 +139,7 @@ def reorder_trees(cid_tree_dict: dict, reply_mappings: dict):
 
 def drop_node(nid: str, tree: Tree):
     nodes_dropped = len(tree.subtree(nid).nodes)
-    tree[tree.root].data['has_dropped_node'] += nodes_dropped
+    tree[tree.root].data['dropped_node_count'] += nodes_dropped
     tree.remove_node(nid)
 
 def create_reply_trees_and_graphs(reply_tweets, initial_tweets, reply_mappings):
