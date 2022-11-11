@@ -279,6 +279,7 @@ def create_reply_graph_viz(cid_graph_dict, filename='reply_graph_viz.pdf'):
     """ Function that visualizes a reply graph given some arguments.
     """
     for cid, graph in cid_graph_dict.items():
+        # Size range determined though trial and error
         if graph.size() > 25 and graph.size() < 50:
             plt.figure(1)
             pos = networkx.spring_layout(graph)
