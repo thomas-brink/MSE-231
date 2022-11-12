@@ -40,6 +40,7 @@ if __name__ == "__main__":
         mapper[survey_columns[i]] = og_survey_columns[i]
 
     survey_df = survey_df.rename(columns=mapper)
+    survey_df.index.name = 'RespondentID'
     
     # Export to new csv
     survey_df.to_csv('new_comma_survey.csv')
