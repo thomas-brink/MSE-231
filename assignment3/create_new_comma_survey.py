@@ -25,14 +25,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--survey_csv", help="csv of google form responses", required=True)
     flags = parser.parse_args()
-    
+
     # Read csvs into dataframes
     survey_df = pd.read_csv(flags.survey_csv)
     og_survey_df = pd.read_csv('comma-survey.csv', index_col='RespondentID')
-    
+
     # Rename columns of google form survey results
     survey_df = survey_df.drop(columns=['Tijdstempel'])
- 
+
     mapper = {}
     og_survey_columns = list(og_survey_df.columns)
     survey_columns = list(survey_df.columns)
@@ -41,6 +41,6 @@ if __name__ == "__main__":
 
     survey_df = survey_df.rename(columns=mapper)
     survey_df.index.name = 'RespondentID'
-    
+
     # Export to new csv
     survey_df.to_csv('new_comma_survey.csv')
