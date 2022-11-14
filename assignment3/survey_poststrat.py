@@ -75,7 +75,7 @@ def train_encoders_and_models(survey_df: pd.DataFrame, question_cols: List[str],
 
     # Fit models
     models = [LogisticRegression(
-        multi_class='multinomial', max_iter=1000) for i in range(len(question_cols))]
+        multi_class='multinomial', max_iter=1000, fit_intercept=False) for i in range(len(question_cols))]
     for idx, q in enumerate(question_cols):
         y_vals = survey_df[q].to_numpy()
         Y_vals = labelEncoders[idx].transform(y_vals)
