@@ -1,0 +1,22 @@
+,Question,Answer,Unweighted Probability,Weighted Probability
+0,"In your opinion, which sentence is more gramatically correct?","It's important for a person to be honest, kind and loyal.",0.4287111,0.447908
+1,"In your opinion, which sentence is more gramatically correct?","It's important for a person to be honest, kind, and loyal.",0.5712889,0.552092
+2,"Prior to reading about it above, had you heard of the serial (or Oxford) comma?",No,0.4691976,0.4660528
+3,"Prior to reading about it above, had you heard of the serial (or Oxford) comma?",Yes,0.5308024,0.5339472
+4,"How much, if at all, do you care about the use (or lack thereof) of the serial (or Oxford) comma in grammar?",A lot,0.2859609,0.2617256
+5,"How much, if at all, do you care about the use (or lack thereof) of the serial (or Oxford) comma in grammar?",Not at all,0.1319741,0.1260864
+6,"How much, if at all, do you care about the use (or lack thereof) of the serial (or Oxford) comma in grammar?",Not much,0.251642,0.2518076
+7,"How much, if at all, do you care about the use (or lack thereof) of the serial (or Oxford) comma in grammar?",Some,0.3304229,0.3603803
+8,How would you write the following sentence?,"Some experts say it's important to drink milk, but the data are inconclusive.",0.193942,0.1869154
+9,How would you write the following sentence?,"Some experts say it's important to drink milk, but the data is inconclusive.",0.806058,0.8130846
+10,"When faced with using the word ""data"", have you ever spent time considering if the word was a singular or plural noun?",No,0.5673193,0.5465595
+11,"When faced with using the word ""data"", have you ever spent time considering if the word was a singular or plural noun?",Yes,0.4326807,0.4534405
+12,"How much, if at all, do you care about the debate over the use of the word ""data"" as a singluar or plural noun?",A lot,0.1041311,0.107179
+13,"How much, if at all, do you care about the debate over the use of the word ""data"" as a singluar or plural noun?",Not at all,0.2117849,0.1989952
+14,"How much, if at all, do you care about the debate over the use of the word ""data"" as a singluar or plural noun?",Not much,0.3829802,0.3963788
+15,"How much, if at all, do you care about the debate over the use of the word ""data"" as a singluar or plural noun?",Some,0.3011038,0.297447
+16,"In your opinion, how important or unimportant is proper use of grammar?",Neither important nor unimportant (neutral),0.0496045,0.0387887
+17,"In your opinion, how important or unimportant is proper use of grammar?",Somewhat important,0.3214733,0.3187026
+18,"In your opinion, how important or unimportant is proper use of grammar?",Somewhat unimportant,0.0090629,0.0088351
+19,"In your opinion, how important or unimportant is proper use of grammar?",Very important,0.6148492,0.6295324
+20,"In your opinion, how important or unimportant is proper use of grammar?",Very unimportant,0.00501,0.0041412
