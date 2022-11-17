@@ -120,7 +120,7 @@ def estimate_attitudes(labelEncoders: List[LabelEncoderType], models: List[Logis
                                             == census_mapping]
         deographic_total = row.sum(axis=1).values[0]
         total_population += deographic_total
-        # For every substansive question
+        # For every substantive question
         for q_idx in range(len(question_cols)):
             # Get the probability predictions
             y_prob = models[q_idx].predict_proba(x_vals)[0]
@@ -161,7 +161,7 @@ if __name__ == "__main__":
     question_cols = list(survey_df.columns)[:7]
     demographic_cols = list(survey_df.columns)[7:11]
 
-    # Drop rows where at least one of the sbustansive questions were not answered
+    # Drop rows where at least one of the substantive questions were not answered
     survey_df = survey_df.dropna(axis=0, subset=question_cols)
     # Drop rows where all the demographic questions were unanswered
     survey_df = survey_df.dropna(axis=0, how='all', subset=demographic_cols)
