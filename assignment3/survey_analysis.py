@@ -13,6 +13,7 @@
     survey_analysis_results.txt
 """
 import pandas as pd
+import matplotlib.pyplot as plt
 from textwrap import wrap
 
 
@@ -99,7 +100,7 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
         header=False, float_format='{:,.2%}'.format))
     print('{} respondents did not disclose {}'.format(
         survey_df.iloc[:, 7].isna().sum(), col_7.name))
-    print('{} of those respondents also did not answer at least one of the sustantive questions'.format(
+    print('{} of those respondents also did not answer at least one of the substantive questions'.format(
         sustantive_vs_7))
     plt_7 = col_7.plot.bar(
         title=col_7.name + ' Distribution', ylabel="Count", rot=0)
@@ -107,6 +108,7 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
         plt_7.bar_label(container)
     plt_7.figure.savefig('{}_Distribution.png'.format(col_7.name))
     print()
+    plt.close()
 
     # Age
     survey_df.sort_values('Age')
@@ -124,7 +126,8 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
         plt_8.bar_label(container)
     plt_8.figure.savefig('{}_Distribution.png'.format(col_8.name))
     print()
-
+    plt.close()
+    
     # Household Income
     survey_df.sort_values('Household Income')
     col_9 = survey_df.iloc[:, 9].value_counts(dropna=False, sort=False)
@@ -143,6 +146,7 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
     plt_9.figure.savefig('{}_Distribution.png'.format(
         col_9.name.replace(' ', '_')))
     print()
+    plt.close()
 
     # Education
     survey_df.sort_values('Education')
@@ -158,6 +162,7 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
         plt_10.bar_label(container)
     plt_10.figure.savefig('{}_Distribution.png'.format(col_10.name))
     print()
+    plt.close()
 
     # Location
     col_11 = survey_df.iloc[:, 11].value_counts(dropna=False, sort=False)
@@ -178,6 +183,7 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
     plt_11.figure.savefig('{}_Distribution.png'.format(
         col_11.name.replace(' ', '_')))
     print()
+    plt.close()
 
     # Bivariate Plots
     # Education and Sex
@@ -185,6 +191,8 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
     edu_sex_plt = survey_df.groupby(['Education', 'Gender']).size().unstack(fill_value=0).plot(
         kind='bar', title='Distribution of Education Level across Sex', ylabel='Count', xlabel='Education Level')
     edu_sex_plt.figure.savefig('Education_and_Sex.png')
+    plt.close()
+    
     # Location and Income
     survey_df.sort_values('Household Income')
     loc_hi = survey_df.groupby(
@@ -195,7 +203,8 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
                            '$100,000 - $149,999': '$\$100,000 - \$149,999$'}, inplace=True)
     loc_hi_plt = loc_hi.plot(kind='bar', title='Distribution of Household Income across Regions', ylabel='Count',
                              xlabel='Region').legend(title='Household Income', loc='center left', bbox_to_anchor=(1.0, 0.5))
-    loc_hi_plt.figure.savefig('Location_and_Income.png')
+    loc_hi_plt.figure.savefig('Location_and_Income.png', bbox_inches='tight')
+    plt.close()
 
     '''SUBSTANTIVE QUESTION DATA'''
     # Questions 1-3: Oxford Comma
@@ -214,6 +223,7 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
         plt_0.bar_label(container)
     plt_0.figure.savefig('Question1_Distribution.png')
     print()
+    plt.close()
 
     # Prior knowledge of Oxford comma
     col_1 = survey_df.iloc[:, 1].value_counts(dropna=False)
@@ -227,6 +237,7 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
         plt_1.bar_label(container)
     plt_1.figure.savefig('Question2_Distribution.png')
     print()
+    plt.close()
 
     # Question 3: Level of investment in usage of the Oxford comma
     col_2 = survey_df.iloc[:, 2].value_counts(sort=False, dropna=False)
@@ -240,6 +251,7 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
         plt_2.bar_label(container)
     plt_2.figure.savefig('Question3_Distribution.png')
     print()
+    plt.close()
 
     # Q1-3 Bivariate Plots
     # Question 1 and 2: Use of the Oxford comma given prior knowledge
@@ -258,8 +270,9 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
                   bbox_to_anchor=(0, -0.3))
     for container in plt_01.containers:
         plt_01.bar_label(container)
-    plt_01.figure.savefig('Question1_Given_2_Distribution.png')
+    plt_01.figure.savefig('Question1_Given_2_Distribution.png', bbox_inches='tight')
     print()
+    plt.close()
 
     # Question 2 and 3: Level of investment in usage of the Oxford comma given prior knowledge
     answered_Q3_not_Q2 = survey_df[survey_df.iloc[:,
@@ -281,8 +294,9 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
                   loc='center left', bbox_to_anchor=(1.0, 0.5))
     for container in plt_21.containers:
         plt_21.bar_label(container)
-    plt_21.figure.savefig('Question3_Given_2_Distribution.png')
+    plt_21.figure.savefig('Question3_Given_2_Distribution.png', bbox_inches='tight')
     print()
+    plt.close()
 
     # Questions 1 and 3: Level of investment in usage of the Oxford Comma given whether the respondent used it
     col_02 = [question_cols[0], question_cols[2]]
@@ -303,8 +317,9 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
                   loc='center left', bbox_to_anchor=(1.0, 0.5))
     for container in plt_20.containers:
         plt_20.bar_label(container)
-    plt_20.figure.savefig('Question3_Given_1_Distribution.png')
+    plt_20.figure.savefig('Question3_Given_1_Distribution.png', bbox_inches='tight')
     print()
+    plt.close()
 
     # Questions 4-6: Plurality of 'data'
     # Question 4: Plurality of 'data' sentence example
@@ -325,6 +340,7 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
         plt_3.bar_label(container)
     plt_3.figure.savefig('Question4_Distribution.png')
     print()
+    plt.close()
 
     # Question 5: Prior consideration of the plurality of 'data'
     # Table
@@ -340,6 +356,7 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
         plt_4.bar_label(container)
     plt_4.figure.savefig('Question5_Distribution.png')
     print()
+    plt.close()
 
     # Question 6: Level of investment in the plurality of 'data'
     # Table
@@ -355,13 +372,14 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
         plt_5.bar_label(container)
     plt_5.figure.savefig('Question6_Distribution.png')
     print()
+    plt.close()
 
     # Q4-6 Bivariate Plots
     # Question 4 and 5: Plurality of 'data' given prior consideration
     # Table
     col_3_given_4 = survey_df[question_cols[3:5]].groupby(
         question_cols[4]).value_counts(normalize=True)
-    print('Response distribution for Q5 given if the person previously considered the purality of \'data\'')
+    print('Response distribution for Q5 given if the person previously considered the plurality of \'data\'')
     print(col_3_given_4.to_frame().to_string(header=False,
           index_names=False, float_format='{:,.2%}'.format))
     # Plot
@@ -373,8 +391,9 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
                   bbox_to_anchor=(-0.15, -0.35))
     for container in plt_34.containers:
         plt_34.bar_label(container)
-    plt_34.figure.savefig('Question5_Given_4_Distribution.png')
+    plt_34.figure.savefig('Question5_Given_4_Distribution.png', bbox_inches='tight')
     print()
+    plt.close()
 
     # Question 5 and 6: Level of investment in the plurality of 'data' given prior consideration
     answered_Q6_not_Q5 = survey_df[survey_df.iloc[:,
@@ -397,15 +416,16 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
                   loc='center left', bbox_to_anchor=(1.0, 0.5))
     for container in plt_54.containers:
         plt_54.bar_label(container)
-    plt_54.figure.savefig('Question6_Given_5_Distribution.png')
+    plt_54.figure.savefig('Question6_Given_5_Distribution.png', bbox_inches='tight')
     print()
+    plt.close()
 
     # Questions 4 and 6: Level of investment in plurality of 'data' given whether the respondent used the plural
     col_35 = [question_cols[3], question_cols[5]]
     # Table
     col_5_given_3 = survey_df[col_35].groupby(
         question_cols[3]).value_counts(normalize=True, dropna=False)
-    print('Response distribution for Q6 given if the person previously considered the plurailty of \'data\'')
+    print('Response distribution for Q6 given if the person previously considered the plurality of \'data\'')
     print(col_5_given_3.to_frame().sort_values(col_35).to_string(
         header=False, index_names=False, float_format='{:,.2%}'.format))
     # Plot
@@ -419,8 +439,9 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
                   loc='center left', bbox_to_anchor=(1.0, 0.5))
     for container in plt_53.containers:
         plt_53.bar_label(container)
-    plt_53.figure.savefig('Question6_Given_4_Distribution.png')
+    plt_53.figure.savefig('Question6_Given_4_Distribution.png', bbox_inches='tight')
     print()
+    plt.close()
 
     # Question 7: Importance of Grammar
     # Table
@@ -438,6 +459,7 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
         plt_6.bar_label(container)
     plt_6.figure.savefig('Question7_Distribution.png')
     print()
+    plt.close()
 
     # Q7 Bivariate Plots
     # Questions 3 and 7: Level of investment in proper grammer given level of investment in the use of the Oxford Comma
@@ -458,8 +480,9 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
         rot=0, xlabel='\n'.join(wrap(col_2.name, 70)))
     plt_62.legend(title='\n'.join(wrap(col_6.name, 50)),
                   loc='center left', bbox_to_anchor=(1.0, 0.5))
-    plt_62.figure.savefig('Question7_Given_3_Distribution.png')
+    plt_62.figure.savefig('Question7_Given_3_Distribution.png', bbox_inches='tight')
     print()
+    plt.close()
 
     # Questions 6 and 7: Level of investment in proper grammer given level of investment in the plurality of 'data'
     # Table
@@ -476,8 +499,9 @@ def in_depth_column_analysis(survey_df: pd.DataFrame, n_obs: int, n_features: in
         rot=0, xlabel='\n'.join(wrap(col_5.name, 70)))
     plt_65.legend(title='\n'.join(wrap(col_6.name, 50)),
                   loc='center left', bbox_to_anchor=(1.0, 0.5))
-    plt_65.figure.savefig('Question7_Given_6_Distribution.png')
+    plt_65.figure.savefig('Question7_Given_6_Distribution.png', bbox_inches='tight')
     print()
+    plt.close()
 
 
 if __name__ == "__main__":
