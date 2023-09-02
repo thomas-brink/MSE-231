@@ -4,3 +4,4 @@ Welcome to the course repository for Stanford MS&amp;E 231: Introduction to Comp
 
 If you're looking for the course website, which includes the syllabus and assignments, go to [mse231.github.io](https://mse231.github.io).
 
+This repository contains code for assignments 2 and 3 written by Eva Batelaan, Michelle Lahrkamp, and Thomas Brink.
